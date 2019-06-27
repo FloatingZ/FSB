@@ -18,6 +18,7 @@
 package com.h3xstream.findsecbugs.taintanalysis;
 
 import com.h3xstream.findsecbugs.FindSecBugsGlobalConfig;
+import com.h3xstream.findsecbugs.TransferParamFieldReturn.PropritiesHelper;
 import com.h3xstream.findsecbugs.TransferParamFieldReturn.ScanInfo;
 import com.h3xstream.findsecbugs.common.ByteCode;
 import com.h3xstream.findsecbugs.taintanalysis.data.TaintLocation;
@@ -26,6 +27,7 @@ import com.h3xstream.findsecbugs.taintanalysis.data.UnknownSourceType;
 import edu.umd.cs.findbugs.ba.AbstractFrameModelingVisitor;
 import edu.umd.cs.findbugs.ba.DataflowAnalysisException;
 import edu.umd.cs.findbugs.ba.InvalidBytecodeException;
+import edu.umd.cs.findbugs.ba.ca.Call;
 import edu.umd.cs.findbugs.ba.generic.GenericSignatureParser;
 import edu.umd.cs.findbugs.classfile.MethodDescriptor;
 import edu.umd.cs.findbugs.util.ClassName;
@@ -299,7 +301,6 @@ public class TaintFrameModelingVisitor extends AbstractFrameModelingVisitor<Tain
         Taint taint = new Taint(Taint.State.SAFE);
         ObjectType type = obj.getLoadClassType(cpg);
         taint.setRealInstanceClass(type);
-        if(type.getClassName().contains("java.lang.String"))    taint.setConstantValue("");
         if (FindSecBugsGlobalConfig.getInstance().isDebugTaintState()) {
             taint.setDebugInfo("new " + type.getClassName() + "()");
         }
@@ -505,7 +506,7 @@ public class TaintFrameModelingVisitor extends AbstractFrameModelingVisitor<Tain
             }
             int numProduce = getNumWordsProduced(obj);
             int numConsume = getNumWordsConsumed(obj);
-            taintCopy.setConstantValue("");
+//            taintCopy.setConstantValue("");
             //自定义内部field传递，数据结构
             String className = obj.getClassName(cpg);
 //            if(ScanInfo.classList.contains(className)){
@@ -516,7 +517,7 @@ public class TaintFrameModelingVisitor extends AbstractFrameModelingVisitor<Tain
 
             transferTaintfield(obj,taintCopy);
             processCollection(obj,taintCopy);
-//            generateConstantValue(obj,taintCopy);
+            generateConstantValue(obj,taintCopy);
 //            generateRealType(obj,taintCopy);
             modelInstruction(obj,numConsume , numProduce, taintCopy);
 
@@ -561,33 +562,55 @@ public class TaintFrameModelingVisitor extends AbstractFrameModelingVisitor<Tain
 
 
 
-
     //处理字符串传递
-    private void generateConstantValue(InvokeInstruction obj, Taint taint){
+    private void generateConstantValue(InvokeInstruction obj, Taint taint) {
         String className = obj.getClassName(cpg);
-        if(!className.contains("java.lang.String")) return;
         TaintFrame tf = getFrame();
         String mName = obj.getMethodName(cpg);
-        try{
-            if(mName.contains("<init>")){
-                taint.setConstantValue("");
-                return;
-            }else if(mName.contains("toString")){
-                taint.setConstantValue(tf.getStackValue(0).getConstantValue());
-            }else if(mName.contains("append")){
-                int paramNum = obj.getArgumentTypes(cpg).length;
-                if(paramNum != 1) return;
-                String str0 = tf.getStackValue(0).getConstantValue();
-                String str1 = tf.getStackValue(1).getConstantValue();
-                if(str0 != null && str1 != null)
-                    taint.setConstantValue(str1+str0);
-                else
-                    taint.setConstantValue("*");
-            }else{
-                taint.setConstantValue("*");
+
+        //一般处理,相关字符串直接传递
+        if (className.contains("java.lang.String")) {
+            try {
+                if (mName.contains("toString")) {
+                    taint.setConstantValue(tf.getStackValue(0).getConstantValue());
+                } else if (mName.contains("append")) {
+                    int paramNum = obj.getArgumentTypes(cpg).length;
+                    if (paramNum != 1) return;
+                    String str0 = tf.getStackValue(0).getConstantValue();
+                    String str1 = tf.getStackValue(1).getConstantValue();
+                    if (str0 != null && str1 != null)
+                        taint.setConstantValue(str1 + str0);
+                    else
+                        taint.setConstantValue("");
+                } else {
+                    taint.setConstantValue("");
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-        }catch (Exception e){
-            e.printStackTrace();
+        }else if(className.equals("java.util.Properties") && mName.equals("getProperty")){
+            if(tf.getStackDepth()<2) return;
+            String realClass = "";
+            try {
+                String proFile = tf.getStackValue(1).getConstantValue();
+                String key = tf.getStackValue(0).getConstantValue();
+                realClass = PropritiesHelper.getPropritiesVaule(proFile,key);
+                taint.setConstantValue(realClass);
+            } catch (Exception e){
+                e.printStackTrace();
+            }
+        }else if(className.equals("java.lang.Class")&&mName.equals("forName")){
+            try{
+                String rcName = tf.getStackValue(0).getConstantValue();
+                if(rcName != null){
+                    taint.setRealInstanceClass(new ObjectType(rcName));
+                }
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+
+        } else{
+            if (obj.getArgumentTypes(cpg).length <= 1 && tf.getStackDepth() > 0) taint.setConstantValue(tf.getValue(0).getConstantValue());
         }
     }
 

@@ -20,6 +20,8 @@ public class ScanInfo {
     private static ScanInfo cf = new ScanInfo();
     public static int scanSwitch = 0;
 
+    //return type
+    public static Map<String,Set<String>> returnType = new HashMap<String,Set<String>>();
     public static Map<String, Map<Integer, Set<String>>> paToFd = new HashMap<String,Map<Integer, Set<String>>>();
     public static Map<String,Set<String>> fdToRt = new HashMap<>();
     public static Map<String,Set<Integer>> paToRt = new HashMap<>();
@@ -53,6 +55,9 @@ public class ScanInfo {
             ConstantPoolGen cpg = classContext.getConstantPoolGen();
             //method
             String currentMethod = getFullMethodName(classContext.getMethodGen(method));
+
+            Set<String> typeset = new HashSet<String>();
+
             //for each method
             Map<Integer, Set<String>> mmap = new HashMap<Integer,Set<String>>();
             Set<Integer> msetp = new HashSet<Integer>();
@@ -75,6 +80,10 @@ public class ScanInfo {
                 if(instruction instanceof  ReturnInstruction){
                     if(instruction instanceof RETURN)   continue;
                     Taint t = fact.getStackValue(0);
+                    String cn = t.getRealInstanceClass().getClassName();
+                    if(cn!=null && cn != ""){
+                        typeset.add(cn);
+                    }
                     int count = method.getArgumentTypes().length;
 //                    Set<Integer> idxcount = t.getParameters();
                     List<Taint> sl = fact.getSlotList();
@@ -98,12 +107,14 @@ public class ScanInfo {
                         }
                         if(fact.getTopValue().getState() == Taint.State.SAFE) continue;
                         if(u.getSourceType() == UnknownSourceType.PARAMETER){
-                                msetp.add(u.getParameterIndex());
+                            msetp.add(u.getParameterIndex());
                         }
                     }
                 }
             }
-
+            if(typeset.size()>0){
+                returnType.put(currentMethod,typeset);
+            }
             if(mmap.size()>0){
                 paToFd.put(currentMethod,mmap);
             }
