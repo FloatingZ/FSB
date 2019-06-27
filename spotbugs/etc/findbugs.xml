@@ -292,6 +292,8 @@
           <Detector class="edu.umd.cs.findbugs.detect.FindRoughConstants"
                     reports="CNT_ROUGH_CONSTANT_VALUE" speed="fast" hidden="false"/>
 
+          <Detector class="com.h3xstream.findsecbugs.injection.sql.SqlInjectionDetector" speed="fast" reports="SQL_INJECTION_JDBC"/>
+
           <Detector class="edu.umd.cs.findbugs.detect.FunctionsThatMightBeMistakenForProcedures" speed="fast"
                     reports="" hidden="true"/>
           <Detector class="edu.umd.cs.findbugs.detect.NoteSuppressedWarnings" speed="fast"
@@ -867,6 +869,9 @@
           <BugPattern abbrev="TLW" type="TLW_TWO_LOCK_WAIT" category="MT_CORRECTNESS"/>
           <BugPattern abbrev="TLW" type="TLW_TWO_LOCK_NOTIFY" category="MT_CORRECTNESS"
                     deprecated="true" experimental="true"/>
+
+          <BugPattern  abbrev="SECSQLIJDBC" type="SQL_INJECTION_JDBC" category="SECURITY" cweid="89"/>
+
           <!-- has never been generated -->
           <BugPattern abbrev="UW" type="UW_UNCOND_WAIT" category="MT_CORRECTNESS"/>
           <BugPattern abbrev="UR" type="UR_UNINIT_READ" category="CORRECTNESS"/>
