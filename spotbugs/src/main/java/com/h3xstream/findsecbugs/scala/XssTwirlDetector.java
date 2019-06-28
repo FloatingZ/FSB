@@ -15,33 +15,35 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library.
  */
-package com.h3xstream.findsecbugs.injection.sql;
+package com.h3xstream.findsecbugs.scala;
 
+import com.h3xstream.findsecbugs.FindSecBugsGlobalConfig;
 import com.h3xstream.findsecbugs.injection.BasicInjectionDetector;
 import com.h3xstream.findsecbugs.taintanalysis.Taint;
 import edu.umd.cs.findbugs.BugReporter;
 import edu.umd.cs.findbugs.Priorities;
 
-public class SqlInjectionDetector extends BasicInjectionDetector {
+public class XssTwirlDetector extends BasicInjectionDetector {
 
-    public SqlInjectionDetector(BugReporter bugReporter) {
+    private static final String SCALA_XSS_TWIRL_TYPE = "SCALA_XSS_TWIRL";
+
+    public XssTwirlDetector(BugReporter bugReporter) {
         super(bugReporter);
-        loadConfiguredSinks("sql-hibernate.txt", "SQL_INJECTION_HIBERNATE");
-        loadConfiguredSinks("sql-jdo.txt", "SQL_INJECTION_JDO");
-        loadConfiguredSinks("sql-jpa.txt", "SQL_INJECTION_JPA");
-        loadConfiguredSinks("sql-jdbc.txt", "SQL_INJECTION_JDBC");
-        loadConfiguredSinks("sql-spring.txt", "SQL_INJECTION_SPRING_JDBC");
-        loadConfiguredSinks("sql-scala-slick.txt", "SCALA_SQL_INJECTION_SLICK");
-        loadConfiguredSinks("sql-scala-anorm.txt", "SCALA_SQL_INJECTION_ANORM");
-        loadConfiguredSinks("sql-turbine.txt", "SQL_INJECTION_TURBINE");
-        //TODO : Add org.springframework.jdbc.core.simple.SimpleJdbcTemplate (Spring < 3.2.1)
+        loadConfiguredSinks("xss-scala-twirl.txt", SCALA_XSS_TWIRL_TYPE);
     }
-    
+
     @Override
     protected int getPriority(Taint taint) {
-        if (!taint.isSafe() && taint.hasTag(Taint.Tag.SQL_INJECTION_SAFE)) {
-            return Priorities.IGNORE_PRIORITY;
-        } else if (!taint.isSafe() && taint.hasTag(Taint.Tag.APOSTROPHE_ENCODED)) {
+        if (!taint.isSafe() && taint.hasTag(Taint.Tag.XSS_SAFE)) {
+            if(FindSecBugsGlobalConfig.getInstance().isReportPotentialXssWrongContext()) {
+                return Priorities.LOW_PRIORITY;
+            }
+            else {
+                return Priorities.IGNORE_PRIORITY;
+            }
+        } else if (!taint.isSafe()
+                && (taint.hasOneTag(Taint.Tag.QUOTE_ENCODED, Taint.Tag.APOSTROPHE_ENCODED))
+                && taint.hasTag(Taint.Tag.LT_ENCODED)) {
             return Priorities.LOW_PRIORITY;
         } else {
             return super.getPriority(taint);

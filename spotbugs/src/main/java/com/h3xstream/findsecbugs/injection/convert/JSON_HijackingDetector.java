@@ -5,10 +5,7 @@ import com.h3xstream.findsecbugs.injection.InjectionPoint;
 import com.h3xstream.findsecbugs.injection.InjectionSink;
 import com.h3xstream.findsecbugs.taintanalysis.TaintDataflow;
 import com.h3xstream.findsecbugs.taintanalysis.TaintFrame;
-import edu.umd.cs.findbugs.BugInstance;
-import edu.umd.cs.findbugs.BugReporter;
-import edu.umd.cs.findbugs.Priorities;
-import edu.umd.cs.findbugs.SourceLineAnnotation;
+import edu.umd.cs.findbugs.*;
 import edu.umd.cs.findbugs.ba.CFGBuilderException;
 import edu.umd.cs.findbugs.ba.ClassContext;
 import edu.umd.cs.findbugs.ba.DataflowAnalysisException;
@@ -26,14 +23,20 @@ import java.util.Map;
 
 
 public class JSON_HijackingDetector extends BasicInjectionDetector {
-    private final Map<String, InjectionPoint> injectionMap = new HashMap<String, InjectionPoint>();
 
+    BugAccumulator bugAccumulator;
     boolean useSafeFrame = false;
     String safePackage = "dwr.util";
     String[] sinkMeth = new String[]{"select","exec"};
     String[] SensitiveClass = new String[]{"jsonobject","jsonvalue","jsonarray","jsonparser"};
     protected JSON_HijackingDetector(BugReporter bugReporter) {
         super(bugReporter);
+        this.bugAccumulator = new BugAccumulator(bugReporter);
+    }
+
+    @Override
+    public void report(){
+        if(useSafeFrame==false) bugAccumulator.reportAccumulatedBugs();
     }
 
     @Override
@@ -62,6 +65,8 @@ public class JSON_HijackingDetector extends BasicInjectionDetector {
             analyzeLocationTwo(classContext, method, handle, cpg, invoke, fact, currentMethod);
         }
 
+
+
     }
     protected void analyzeLocationTwo(ClassContext classContext, Method method, InstructionHandle handle,
                                    ConstantPoolGen cpg, InvokeInstruction invoke, TaintFrame fact, String currentMethod)
@@ -80,14 +85,18 @@ public class JSON_HijackingDetector extends BasicInjectionDetector {
             String classType = invoke.getClassName(cpg);
             for(String db:SensitiveClass){
                 if(classType.toLowerCase().contains(db)){
-                    bugReporter.reportBug(new BugInstance(this, "Mbug", Priorities.HIGH_PRIORITY)
-                            .addClass(classContext.toString()).addSourceLine(sourceLine));
+                    bugAccumulator.accumulateBug(new BugInstance(this, "JSON_HIJACKING", Priorities.HIGH_PRIORITY)
+                            .addClass(classContext.toString()),sourceLine);
+//                    bugReporter.reportBug(new BugInstance(this, "JSON_HIJACKING", Priorities.HIGH_PRIORITY)
+//                            .addClass(classContext.toString()).addSourceLine(sourceLine));
                 }
 
                 for(int offset = 0 ; offset<argType.length ; offset++){
                     if(argType[offset].toString().toLowerCase().contains(db))
-                        bugReporter.reportBug(new BugInstance(this, "Mbug", Priorities.HIGH_PRIORITY)
-                                .addClass(classContext.toString()).addSourceLine(sourceLine));
+//                        bugReporter.reportBug(new BugInstance(this, "JSON_HIJACKING", Priorities.HIGH_PRIORITY)
+//                                .addClass(classContext.toString()).addSourceLine(sourceLine));
+                        bugAccumulator.accumulateBug(new BugInstance(this, "JSON_HIJACKING", Priorities.HIGH_PRIORITY)
+                                .addClass(classContext.toString()),sourceLine);
                 }
             }
         }

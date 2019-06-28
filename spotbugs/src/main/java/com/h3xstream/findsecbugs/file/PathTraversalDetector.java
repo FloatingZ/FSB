@@ -15,34 +15,36 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library.
  */
-package com.h3xstream.findsecbugs.injection.sql;
+package com.h3xstream.findsecbugs.file;
 
 import com.h3xstream.findsecbugs.injection.BasicInjectionDetector;
 import com.h3xstream.findsecbugs.taintanalysis.Taint;
 import edu.umd.cs.findbugs.BugReporter;
 import edu.umd.cs.findbugs.Priorities;
 
-public class SqlInjectionDetector extends BasicInjectionDetector {
+public class PathTraversalDetector extends BasicInjectionDetector {
 
-    public SqlInjectionDetector(BugReporter bugReporter) {
+    private static final String PATH_TRAVERSAL_IN_TYPE = "PATH_TRAVERSAL_IN";
+    private static final String PATH_TRAVERSAL_OUT_TYPE = "PATH_TRAVERSAL_OUT";
+
+    private static final String SCALA_PATH_TRAVERSAL_IN_TYPE = "SCALA_PATH_TRAVERSAL_IN";
+
+    public PathTraversalDetector(BugReporter bugReporter) {
         super(bugReporter);
-        loadConfiguredSinks("sql-hibernate.txt", "SQL_INJECTION_HIBERNATE");
-        loadConfiguredSinks("sql-jdo.txt", "SQL_INJECTION_JDO");
-        loadConfiguredSinks("sql-jpa.txt", "SQL_INJECTION_JPA");
-        loadConfiguredSinks("sql-jdbc.txt", "SQL_INJECTION_JDBC");
-        loadConfiguredSinks("sql-spring.txt", "SQL_INJECTION_SPRING_JDBC");
-        loadConfiguredSinks("sql-scala-slick.txt", "SCALA_SQL_INJECTION_SLICK");
-        loadConfiguredSinks("sql-scala-anorm.txt", "SCALA_SQL_INJECTION_ANORM");
-        loadConfiguredSinks("sql-turbine.txt", "SQL_INJECTION_TURBINE");
-        //TODO : Add org.springframework.jdbc.core.simple.SimpleJdbcTemplate (Spring < 3.2.1)
+        loadConfiguredSinks("path-traversal-in.txt", PATH_TRAVERSAL_IN_TYPE);
+        loadConfiguredSinks("path-traversal-out.txt", PATH_TRAVERSAL_OUT_TYPE);
+        loadConfiguredSinks("scala-path-traversal-in.txt", SCALA_PATH_TRAVERSAL_IN_TYPE);
+        loadConfiguredSinks("kotlin-path-traversal-in.txt", PATH_TRAVERSAL_IN_TYPE);
+
+        // We are not using a Scala-specific message because it doesn't have an embed code example
+        loadConfiguredSinks("scala-path-traversal-out.txt", PATH_TRAVERSAL_OUT_TYPE);
     }
-    
+
+
     @Override
     protected int getPriority(Taint taint) {
-        if (!taint.isSafe() && taint.hasTag(Taint.Tag.SQL_INJECTION_SAFE)) {
+        if (!taint.isSafe() && taint.hasTag(Taint.Tag.PATH_TRAVERSAL_SAFE)) {
             return Priorities.IGNORE_PRIORITY;
-        } else if (!taint.isSafe() && taint.hasTag(Taint.Tag.APOSTROPHE_ENCODED)) {
-            return Priorities.LOW_PRIORITY;
         } else {
             return super.getPriority(taint);
         }
